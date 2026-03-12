@@ -1,0 +1,58 @@
+
+
+services:
+  # Base de Dados
+  db:
+    image: mysql:5.7
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Senha123
+      MYSQL_DATABASE: meubanco
+    volumes:
+      - ./banco.sql:/docker-entrypoint-initdb.d/banco.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Instâncias da Aplicação PHP
+  app1:
+    build: 
+      context: .
+      dockerfile: Dockerfile.php
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASS=Senha123
+      - DB_NAME=meubanco
+
+  app2:
+    build: 
+      context: .
+      dockerfile: Dockerfile.php
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASS=Senha123
+      - DB_NAME=meubanco
+
+  # Balanceador de Carga (Nginx)
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nginx_proxy
+    ports:
+      - "4500:4500"
+    depends_on:
+      - app1
+      - app2
